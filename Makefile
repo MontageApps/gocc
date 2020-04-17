@@ -17,26 +17,10 @@
 #
 #
 # Go parameters
-GOCMD=go
-GOBUILD=$(GOCMD) build
-GOCLEAN=$(GOCMD) clean
-GOTEST=$(GOCMD) test
-GOGET=$(GOCMD) get
-BINARY_NAME=gocc
+default: gen
+tools:
+	@echo "Installing tools"
+	go get -u github.com/rakyll/statik@v0.1.6
 
-PREFIX?=/usr/local
-INSTALL_BIN=$(PREFIX)/bin
-INSTALL_DATA=$(PREFIX)/share/gocc
-
-build:
-	$(GOGET)
-	$(GOBUILD) -o $(BINARY_NAME)
-
-clean:
-	$(GOCLEAN)
-
-install: build
-	@mkdir -p $(INSTALL_BIN)
-	@mkdir -p $(INSTALL_DATA)
-	cp $(BINARY_NAME) $(INSTALL_BIN)
-	cp -fr ../config ../dictionary $(INSTALL_DATA)
+gen: tools
+	statik -src=../static
