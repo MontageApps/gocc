@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/MontageApps/gocc"
 	"github.com/liuzl/goutil"
-	"mr_weather.com/gocc"
 )
 
 var (

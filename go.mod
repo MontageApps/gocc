@@ -1,4 +1,4 @@
-module mr_weather.com/gocc
+module github.com/MontageApps/gocc
 
 go 1.14
 

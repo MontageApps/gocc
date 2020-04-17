@@ -12,7 +12,7 @@ import (
 	"github.com/liuzl/da"
 	"github.com/rakyll/statik/fs"
 
-	_ "mr_weather.com/gocc/statik"
+	_ "github.com/MontageApps/gocc/statik"
 )
 
 var (
