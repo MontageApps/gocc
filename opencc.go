@@ -3,35 +3,23 @@ package gocc
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
-	"os"
-	"path/filepath"
+	"net/http"
 	"reflect"
-	"runtime"
 	"strings"
 
 	"github.com/liuzl/da"
+	"github.com/rakyll/statik/fs"
+
+	_ "mr_weather.com/gocc/statik"
 )
 
 var (
 	// Dir is the parent dir for config and dictionary
-	Dir       = flag.String("dir", defaultDir(), "dict dir")
 	configDir = "config"
 	dictDir   = "dictionary"
 )
-
-func defaultDir() string {
-	if runtime.GOOS == "windows" {
-		return `C:\gocc\`
-	}
-	if goPath, ok := os.LookupEnv("GOPATH"); ok {
-		return goPath + "/src/github.com/liuzl/gocc/"
-	} else {
-		return `/usr/local/share/gocc/`
-	}
-}
 
 // Group holds a sequence of dicts
 type Group struct {
@@ -112,8 +100,19 @@ func (cc *OpenCC) initDict() error {
 	if cc.Conversion == "" {
 		return fmt.Errorf("conversion is not set")
 	}
-	configFile := filepath.Join(*Dir, configDir, cc.Conversion+".json")
-	body, err := ioutil.ReadFile(configFile)
+
+	fileSystem, err := fs.New()
+	if err != nil {
+		return err
+	}
+
+	configFile, err := fileSystem.Open("/" + configDir + "/" + cc.Conversion + ".json")
+	if err != nil {
+		return err
+	}
+	defer configFile.Close()
+
+	body, err := ioutil.ReadAll(configFile)
 	if err != nil {
 		return err
 	}
@@ -137,7 +136,7 @@ func (cc *OpenCC) initDict() error {
 			if d, ok := v.(map[string]interface{}); ok {
 				if gdict, has := d["dict"]; has {
 					if dict, is := gdict.(map[string]interface{}); is {
-						group, err := cc.addDictChain(dict)
+						group, err := cc.addDictChain(fileSystem, dict)
 						if err != nil {
 							return err
 						}
@@ -157,7 +156,7 @@ func (cc *OpenCC) initDict() error {
 	return nil
 }
 
-func (cc *OpenCC) addDictChain(d map[string]interface{}) (*Group, error) {
+func (cc *OpenCC) addDictChain(fileSystem http.FileSystem, d map[string]interface{}) (*Group, error) {
 	t, has := d["type"]
 	if !has {
 		return nil, fmt.Errorf("type not found in %+v", d)
@@ -177,7 +176,7 @@ func (cc *OpenCC) addDictChain(d map[string]interface{}) (*Group, error) {
 
 			for _, dict := range dicts {
 				if d, is := dict.(map[string]interface{}); is {
-					group, err := cc.addDictChain(d)
+					group, err := cc.addDictChain(fileSystem, d)
 					if err != nil {
 						return nil, err
 					}
@@ -192,7 +191,12 @@ func (cc *OpenCC) addDictChain(d map[string]interface{}) (*Group, error) {
 			if !has {
 				return nil, fmt.Errorf("no file field found")
 			}
-			daDict, err := da.BuildFromFile(filepath.Join(*Dir, dictDir, file.(string)))
+			dictFile, err := fileSystem.Open("/" + dictDir + "/" + file.(string))
+			if err != nil {
+				return nil, err
+			}
+			defer dictFile.Close()
+			daDict, err := da.Build(dictFile)
 			if err != nil {
 				return nil, err
 			}
