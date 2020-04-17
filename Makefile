@@ -23,4 +23,4 @@ tools:
 	go get -u github.com/rakyll/statik@v0.1.6
 
 gen: tools
-	statik -src=../static
+	statik -src=./static
