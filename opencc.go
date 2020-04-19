@@ -17,9 +17,20 @@ import (
 
 var (
 	// Dir is the parent dir for config and dictionary
-	configDir = "config"
-	dictDir   = "dictionary"
+	configDir  = "/opencc/config/"
+	dictDir    = "/opencc/dictionary/"
+	fileSystem http.FileSystem
 )
+
+// Should init binary file during package initialization.
+// https://github.com/rakyll/statik/issues/56
+func init() {
+	f, err := fs.New()
+	if err != nil {
+		panic(err.Error())
+	}
+	fileSystem = f
+}
 
 // Group holds a sequence of dicts
 type Group struct {
@@ -101,12 +112,7 @@ func (cc *OpenCC) initDict() error {
 		return fmt.Errorf("conversion is not set")
 	}
 
-	fileSystem, err := fs.New()
-	if err != nil {
-		return err
-	}
-
-	configFile, err := fileSystem.Open("/" + configDir + "/" + cc.Conversion + ".json")
+	configFile, err := fileSystem.Open(configDir + cc.Conversion + ".json")
 	if err != nil {
 		return err
 	}
@@ -136,7 +142,7 @@ func (cc *OpenCC) initDict() error {
 			if d, ok := v.(map[string]interface{}); ok {
 				if gdict, has := d["dict"]; has {
 					if dict, is := gdict.(map[string]interface{}); is {
-						group, err := cc.addDictChain(fileSystem, dict)
+						group, err := cc.addDictChain(dict)
 						if err != nil {
 							return err
 						}
@@ -156,7 +162,7 @@ func (cc *OpenCC) initDict() error {
 	return nil
 }
 
-func (cc *OpenCC) addDictChain(fileSystem http.FileSystem, d map[string]interface{}) (*Group, error) {
+func (cc *OpenCC) addDictChain(d map[string]interface{}) (*Group, error) {
 	t, has := d["type"]
 	if !has {
 		return nil, fmt.Errorf("type not found in %+v", d)
@@ -176,7 +182,7 @@ func (cc *OpenCC) addDictChain(fileSystem http.FileSystem, d map[string]interfac
 
 			for _, dict := range dicts {
 				if d, is := dict.(map[string]interface{}); is {
-					group, err := cc.addDictChain(fileSystem, d)
+					group, err := cc.addDictChain(d)
 					if err != nil {
 						return nil, err
 					}
@@ -191,7 +197,7 @@ func (cc *OpenCC) addDictChain(fileSystem http.FileSystem, d map[string]interfac
 			if !has {
 				return nil, fmt.Errorf("no file field found")
 			}
-			dictFile, err := fileSystem.Open("/" + dictDir + "/" + file.(string))
+			dictFile, err := fileSystem.Open(dictDir + file.(string))
 			if err != nil {
 				return nil, err
 			}
